@@ -1,8 +1,12 @@
 if __name__ == "__main__":
 	import sys
+	import path
 	import json
 	from wodify_data import WorkoutResults, Weighlifting, Gymnastics, Metcon
 	from wodify_driver import WodifyDriver
+
+	resumetoken = WodifyDriver.load_resume_token('.resume')
+	trackresumetoken = WodifyDriver.track_resume_token('.resume')
 
 	if (len(sys.argv) < 3):
 		raise Exception('Must provide username and password')
@@ -17,4 +21,4 @@ if __name__ == "__main__":
 	metcons = [Metcon(**m) for m in data.get('metcons')]
 	results = WorkoutResults(gymnastics=gymnastics, weightlifting=weightlifting, metcons=metcons)
 
-	getattr(WodifyDriver, f'import_{component}')(results, username=sys.argv[1], password=sys.argv[2], onimport=lambda name: print(f'Imported {name}'))
+	getattr(WodifyDriver, f'import_{component}')(results, username=sys.argv[1], password=sys.argv[2], resumetoken=resumetoken, onimport=lambda name: print(f'Imported {name}'), onresumetokenupdated=trackresumetoken)

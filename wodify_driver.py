@@ -1,3 +1,4 @@
+import os
 from typing import List, Callable
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -317,59 +318,104 @@ def _add_weightlifting(result: Weighlifting, driver):
 	driver.refresh()
 	return True
 
-def _notify(workout, onimport:Callable[[str], None] = None):
+def _add_with_retry(result, driver, retry: int, handler):
+	for attempt in range(retry - 1):
+		try:
+			handler(result, driver)
+			return
+		except:
+			driver.refresh()
+	handler(result, driver)
+
+def _notify(workout, kind, index, onimport:Callable[[str], None] = None, onresumetokenupdated:Callable[[str], None] = None):
 	if (onimport != None):
 		onimport(f'[{workout.date}] {workout.name}')
 
+	if (onresumetokenupdated != None):
+		onresumetokenupdated(f'{kind}:{index + 1}')
+
+def _write_resume_token(file: str, token: str):
+	if (token == None):
+		if (os.path.exists(file)):
+			os.remove(file)
+	else:
+		with open(file, 'w+', encoding='utf8', newline=None) as f:
+			f.write(token)
+
 class WodifyDriver:
 	@staticmethod
-	def _import_gymnastics(result: Gymnastics, driver):
-		_add_gymnastics(result, driver)
+	def _import_gymnastics(result: Gymnastics, driver, retry):
+		_add_with_retry(result, driver, retry, _add_gymnastics)
 
 	@staticmethod
-	def import_gymnastics(results: List[Gymnastics], driver = None, username = None, password = None, onimport:Callable[[str], None] = None):
+	def import_gymnastics(results: List[Gymnastics], driver = None, username = None, password = None, start_at: int = 0, retry: int = 5, onimport:Callable[[str], None] = None, onresumetokenupdated:Callable[[str], None] = None):
 		(driver, destroy) = _ensure_driver(driver, username, password)
 		try:
-			for result in results:
-				WodifyDriver._import_gymnastics(result, driver)
-				_notify(result, onimport)
+			for index,result in enumerate(results[start_at:], start=start_at):
+				WodifyDriver._import_gymnastics(result, driver, retry)
+				_notify(result, 'gymnastics', index, onimport, onresumetokenupdated)
 		finally:
 			_cleanup(driver, destroy)
 
 	@staticmethod
-	def _import_weightlifting(result: Weighlifting, driver):
-		_add_weightlifting(result, driver)
+	def _import_weightlifting(result: Weighlifting, driver, retry):
+		_add_with_retry(result, driver, retry, _add_weightlifting)
 
 	@staticmethod
-	def import_weightlifting(results: List[Weighlifting], driver = None, username = None, password = None, onimport:Callable[[str], None] = None):
+	def import_weightlifting(results: List[Weighlifting], driver = None, username = None, password = None, start_at: int = 0, retry: int = 5, onimport:Callable[[str], None] = None, onresumetokenupdated:Callable[[str], None] = None):
 		(driver, destroy) = _ensure_driver(driver, username, password)
 		try:
-			for result in results:
-				WodifyDriver._import_weightlifting(result, driver)
-				_notify(result, onimport)
+			for index,result in enumerate(results[start_at:], start=start_at):
+				WodifyDriver._import_weightlifting(result, driver, retry)
+				_notify(result, 'weightlifting', index, onimport, onresumetokenupdated)
 		finally:
 			_cleanup(driver, destroy)
 
 	@staticmethod
-	def _import_metcon(result: Metcon, driver):
-		_add_metcon(result, driver)
+	def _import_metcon(result: Metcon, driver, retry):
+		_add_with_retry(result, driver, retry, _add_metcon)
 
 	@staticmethod
-	def import_metcon(results: List[Metcon], driver = None, username = None, password = None, onimport:Callable[[str], None] = None):
+	def import_metcon(results: List[Metcon], driver = None, username = None, password = None, start_at: int = 0, retry: int = 5, onimport:Callable[[str], None] = None, onresumetokenupdated:Callable[[str], None] = None):
 		(driver, destroy) = _ensure_driver(driver, username, password)
 		try:
-			for result in results:
-				WodifyDriver._import_metcon(result, driver)
-				_notify(result, onimport)
+			for index,result in enumerate(results[start_at:], start=start_at):
+				WodifyDriver._import_metcon(result, driver, retry)
+				_notify(result, 'metcon', index, onimport, onresumetokenupdated)
 		finally:
 			_cleanup(driver, destroy)
 
 	@staticmethod
-	def import_all(results: WorkoutResults, driver = None, username = None, password = None, onimport:Callable[[str], None] = None):
+	def import_all(results: WorkoutResults, driver = None, username = None, password = None, resumetoken: str = None, retry: int = 5, onimport:Callable[[str], None] = None, onresumetokenupdated:Callable[[str], None] = None):
 		(driver, destroy) = _ensure_driver(driver, username, password)
+		(kind,index) = resumetoken.split(':') if resumetoken != None and len(resumetoken) > 0 else (None, 0)
 		try:
-			WodifyDriver.import_gymnastics(results.gymnastics, driver=driver, onimport=onimport)
-			WodifyDriver.import_weightlifting(results.weightlifting, driver=driver, onimport=onimport)
-			WodifyDriver.import_metcon(results.metcons, driver=driver, onimport=onimport)
+			if (kind == None or kind == 'gymnastics'):
+				WodifyDriver.import_gymnastics(results.gymnastics, driver=driver, start_at=int(index), retry=retry, onimport=onimport, onresumetokenupdated=onresumetokenupdated)
+				kind = None
+				index = 0
+
+			if (kind == None or kind == 'weightlifting'):
+				WodifyDriver.import_weightlifting(results.weightlifting, driver=driver, start_at=int(index), retry=retry, onimport=onimport, onresumetokenupdated=onresumetokenupdated)
+				kind = None
+				inded = 0
+
+			if (kind == None or kind == 'metcon'):
+				WodifyDriver.import_metcon(results.metcons, driver=driver, start_at=int(index), retry=retry, onimport=onimport, onresumetokenupdated=onresumetokenupdated)
+
+			if (onresumetokenupdated != None):
+				onresumetokenupdated(None)
 		finally:
 			_cleanup(driver, destroy)
+
+	@staticmethod
+	def load_resume_token(file: str):
+		if (os.path.exists(file)):
+			with open(file, 'r', encoding='utf8', newline=None) as f:
+				return f.read()
+		return None
+
+	@staticmethod
+	def track_resume_token(file: str) -> Callable[[str], None]:
+		return lambda token: _write_resume_token(file, token)
+
