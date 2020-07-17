@@ -5,7 +5,6 @@ import re
 import requests
 from lxml import html
 import datetime
-from time import strptime
 from enum import Enum
 from typing import NamedTuple, List, Union
 
@@ -168,14 +167,13 @@ class Measurement:
 	@staticmethod
 	def _parse_time(value):
 		try:
-			t = strptime(value, '%M:%S')
-			return (t.tm_min * 60) + t.tm_sec
+			parts = [int(x) for x in value.split(':')]
+			if (len(parts) == 2):
+				return (parts[0] * 60) + parts[1]
+			if (len(parts) == 3):
+				return (parts[0] * 3600) + (parts[1] * 60) + parts[2]
 		except:
-			try:
-				t = strptime(value, '%H:%M:%S')
-				return (t.tm_hour * 3600) + (t.tm_min * 60) + t.tm_sec
-			except:
-				return None
+			return None
 
 	@staticmethod
 	def _parse_with_unit(value, defaultUnit = None):
@@ -214,8 +212,11 @@ class Measurement:
 			secs = Measurement.parse(value[minIndex + 1:])
 			return Measurement(mins.value + secs.value, MeasurementUnit.SECONDS)
 
-		if (value.lower() == 'completed'):
+		if ('completed' in value.lower()):
 			return Measurement(0, MeasurementUnit.REPS)
+
+		if ('pick load' in value.lower()):
+			return Measurement(0, MeasurementUnit.POUNDS)
 
 		(unit, _) = Measurement._parse_unit_and_factor(value)
 		if (unit != None):
@@ -239,7 +240,7 @@ class Movement(NamedTuple):
 		description = description.replace('Box, Bands', 'Box/Bands').strip()
 
 		if (description.lower().startswith('rest ') or description.lower().startswith('resting ')):
-			assigned = description.split(' ', 1)[1].split(' between ')[0]
+			assigned = description.replace(' in between ', ' between ').split(' ', 1)[1].split(' between ')[0]
 			return Movement(summary='Rest', description=description, assigned=Measurement.parse(assigned))
 
 		if (', ' in description):
@@ -255,6 +256,10 @@ class Movement(NamedTuple):
 			except:
 				if (':' in assigned):
 					parts = [part.strip() for part in assigned.split(':')]
+					assigned = parts[0]
+					performed = Measurement.parse_list(parts[1])
+				elif ('|' in assigned):
+					parts = [part.strip() for part in assigned.split('|')]
 					assigned = parts[0]
 					performed = Measurement.parse_list(parts[1])
 				assigned = Measurement.parse(re.split('[,|]', assigned)[0].strip())
