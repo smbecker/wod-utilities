@@ -11,8 +11,7 @@ from wodify_driver import WodifyDriver
 print('This script will walk you through migrating your workout results from beyondthewhiteboard.com. You will need your beyondthewhiteboard.com username and password as well as your wodify.com username and password.')
 print('')
 
-# bwtbout = 'workouts.csv'
-bwtbout = '/Users/shaun/dev/personal/wod-utils/small.csv'
+bwtbout = 'workouts.csv'
 if (path.exists(bwtbout)):
 	print('Your workouts have already been downloaded and will not be downloaded again.')
 else:
