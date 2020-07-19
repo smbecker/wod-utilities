@@ -21,4 +21,4 @@ if __name__ == "__main__":
 	metcons = [Metcon(**m) for m in data.get('metcons')]
 	results = WorkoutResults(gymnastics=gymnastics, weightlifting=weightlifting, metcons=metcons)
 
-	getattr(WodifyDriver, f'import_{component}')(results, username=sys.argv[1], password=sys.argv[2], resumetoken=resumetoken, onimport=lambda name: print(f'Imported {name}'), onresumetokenupdated=trackresumetoken)
+	getattr(WodifyDriver, f'import_{component}')(getattr(results, component), username=sys.argv[1], password=sys.argv[2], resumetoken=resumetoken, onimport=lambda name: print(f'Imported {name}'), onresumetokenupdated=trackresumetoken)

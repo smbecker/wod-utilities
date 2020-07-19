@@ -119,6 +119,15 @@ def _search_component(driver, component, skipcheck = False, allowretry = True, i
 
 		return False
 	except:
+		pass
+
+	try:
+		results = _wait_for_element(driver, (By.CLASS_NAME, 'chosen-results'), 2)
+		for r in results.find_elements_by_tag_name('li'):
+			if (r.text == component):
+				r.click()
+				return True
+	except:
 		searchbox.send_keys(Keys.ENTER)
 		return True
 
@@ -141,7 +150,7 @@ class DistanceMeasure(MetconMeasure):
 
 	def configure(self, driver, prescribed):
 		_send_keys(driver, (By.ID, 'AthleteTheme_wt1_block_wtMainContent_WOD_UI_wt2_block_Performance_UI_wtPerformanceResultEdit_block_wtPerformanceResult_Distance'), self.value)
-		_select(driver, (By.ID, 'AthleteTheme_wt1_block_wtMainContent_WOD_UI_wt2_block_Performance_UI_wtPerformanceResultEdit_block_wtPerformanceResult_DistanceUOM'), int(self.unit))
+		_select(driver, (By.ID, 'AthleteTheme_wt1_block_wtMainContent_WOD_UI_wt2_block_Performance_UI_wtPerformanceResultEdit_block_wtPerformanceResult_DistanceUOM'), self.unit)
 		self.prescribed(driver, prescribed)
 
 class TimeMeasure(MetconMeasure):
@@ -207,7 +216,7 @@ def _get_metcon_measure(result:Metcon):
 
 	t = measure.get('type')
 	if (t == 'distance'):
-		return DistanceMeasure(measure.get('value'), measure.get('unit'))
+		return DistanceMeasure(measure.get('value'), str(int(measure.get('unit'))))
 
 	if (t == 'time'):
 		return TimeMeasure(measure.get('min'), measure.get('sec'))
@@ -324,6 +333,8 @@ def _add_with_retry(result, driver, retry: int, handler):
 			handler(result, driver)
 			return
 		except:
+			if (attempt > 0 and isinstance(result, Metcon) and result.benchmark == True):
+				result = result._replace(benchmark=False)
 			driver.refresh()
 	handler(result, driver)
 

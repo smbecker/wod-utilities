@@ -104,16 +104,17 @@ def _append_notes(description: str, notes: str) -> str:
 def _metcon_from_result(result: bwtb.WorkoutResult, benchmark: bool = True) -> Metcon:
 	measure = _get_metcon_measures(result.results)
 	date = _parse_date(result.date)
-	if (measure != None):
-		return Metcon(
-			date=_parse_date(result.date), \
-			name=result.workout.summary, \
-			measure=measure, \
-			prescribed=result.prescribed, \
-			notes=_append_notes(result.workout.description, result.notes),
-			benchmark=benchmark and measure != None
-		)
-	return None
+	if ('fight gone bad' in result.workout.summary.lower()):
+		# Currently, I cannot parse the results correctly for FGB
+		benchmark = False
+	return Metcon(
+		date=_parse_date(result.date), \
+		name=result.workout.summary, \
+		measure=measure, \
+		prescribed=result.prescribed, \
+		notes=_append_notes(result.workout.description, result.notes),
+		benchmark=benchmark and measure != None
+	)
 
 class WorkoutResults:
 	def __init__(self, gymnastics: List[Gymnastics] = [], weightlifting: List[Weighlifting] = [], metcons: List[Metcon] = []):
